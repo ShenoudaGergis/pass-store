@@ -1,6 +1,10 @@
 <?php
 namespace data;
 
+use function \encryption\enc;
+use function \encryption\dec;
+
+
 require_once "./encryption.php";
 
 //-------------------------------------------------------------------------------------------------
@@ -79,7 +83,7 @@ class Database {
     //-----------------------------------------------------------------------------------
 
     public function createNewContainer($description) {
-        $this->db->exec(sprintf('INSERT INTO containers (description) VALUES ("%s")' , $description));
+        $this->db->exec(sprintf('INSERT INTO containers (description) VALUES ("%s")' , enc($description , $this->token)));
     }
 
     //-----------------------------------------------------------------------------------
@@ -87,7 +91,7 @@ class Database {
     public function createNewEntry($cd_id , $key , $value , $description) {
         $this->db->exec(sprintf('INSERT INTO container_data (cd_id , key , value , description) 
                                  VALUES (%d , "%s" , "%s" , "%s")' , 
-                                 $cd_id , $key , $value , $description));
+                                 $cd_id , enc($key , $this->token) , enc($value , $this->token) , enc($description , $this->token)));
     }    
 
     //-----------------------------------------------------------------------------------
@@ -105,7 +109,7 @@ class Database {
     //-----------------------------------------------------------------------------------
 
     public function updateContainer($id , $description) {
-        $this->db->exec(sprintf('UPDATE containers SET description="%s" WHERE id=%d' , $description , $id));
+        $this->db->exec(sprintf('UPDATE containers SET description="%s" WHERE id=%d' , enc($description , $this->token) , $id));
     }
 
     //-----------------------------------------------------------------------------------
@@ -115,7 +119,7 @@ class Database {
             key="%s",
             value="%s",
             description="%s" 
-            WHERE id=%d' ,  $key , $value , $description , $id));
+            WHERE id=%d' ,  enc($key , $this->token) , enc($value , $this->token) , enc($description , $this->token) , $id));
     }
 
     //-----------------------------------------------------------------------------------
@@ -124,14 +128,13 @@ class Database {
         $r1   = $this->db->query('SELECT * FROM containers');
         $all  = [];
         while($row = $r1->fetchArray()) {
-            $each = ["ID" => $row["id"] , "Description" => $row["description"] , "Entries" => []];
+            $each = ["ID" => $row["id"] , "Description" => dec($row["description"] , $this->token) , "Entries" => []];
             $r2 = $this->db->query(sprintf('SELECT * FROM container_data WHERE cd_id=%d' , $each["ID"]));
             while($row = $r2->fetchArray()) {
-                $each["Entries"][] = ["ID"=>$row["id"],"Container ID"=>$row["cd_id"],"Key"=>$row["key"],"Value"=>$row["value"],"Description"=>$row["description"]];
+                $each["Entries"][] = ["ID"=>$row["id"],"Container ID"=>$row["cd_id"],"Key"=>dec($row["key"] , $this->token),"Value"=>dec($row["value"] , $this->token),"Description"=>dec($row["description"] , $this->token)];
             }
             $all[] = $each;
         }
-        // print_r($all);
         return $all;
     }
 

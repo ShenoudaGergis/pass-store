@@ -1,13 +1,13 @@
 <?php
 namespace encryption;
 
-function encrypt($phrase , $key) {
+function enc($phrase , $key) {
     return @openssl_encrypt($phrase , "AES-128-ECB" , $key);
 }
 
 //---------------------------------------------------------------------------------------
 
-function decrypt($phrase , $key) {
+function dec($phrase , $key) {
     return @openssl_decrypt($phrase , "AES-128-ECB" , $key);
 }
 
