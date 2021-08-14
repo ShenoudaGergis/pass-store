@@ -1,0 +1,6 @@
+{
+    "require": {
+        "php-school/cli-menu": "^4.1",
+        "league/climate": "^3.7"
+    }
+}
