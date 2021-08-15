@@ -140,6 +140,27 @@ class Database {
 
     //-----------------------------------------------------------------------------------
 
+    public function getContainer($id) {
+        $r = $this->db->querySingle(sprintf('SELECT * FROM containers WHERE id=%d' , $id) , true);
+        $r["description"] = dec($r["description"] , $this->token);
+        return $r;
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    public function getEntry($id) {
+        $r = $this->db->querySingle(sprintf('SELECT * FROM container_data WHERE id=%d' , $id) , true);
+        $r2 = [];
+        $r2["ID"]  = $r["id"];
+        $r2["Container ID"] = $r["cd_id"];
+        $r2["Key"] = dec($r["key"] , $this->token);
+        $r2["Value"] = dec($r["value"] , $this->token);
+        $r2["Description"] = dec($r["description"] , $this->token);
+        return $r2;
+    }
+
+    //-----------------------------------------------------------------------------------
+
     public function wipeData() {
         $this->db->exec('DELETE FROM containers');
     }
@@ -149,6 +170,23 @@ class Database {
     public function containerExists($id) {
         return $this->db->query(sprintf('SELECT EXISTS (SELECT 1 FROM containers WHERE id=%d)' , $id))->fetchArray()[0];
     }
+
+    //-----------------------------------------------------------------------------------
+    
+    public function entryExists($id) {
+        return $this->db->query(sprintf('SELECT EXISTS (SELECT 1 FROM container_data WHERE id=%d)' , $id))->fetchArray()[0];
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    public function getContainerEntries($id) {
+        $allContainers = $this->getAllContainers();
+        foreach($allContainers as $key => $container) {
+            if($container["ID"] === $id) return $container["Entries"];
+        }
+        return [];
+    }
+
 }
 
-// print_r((new DataBase())->containerExists(12));
+// print_r((new DataBase())->getEntry(2));
