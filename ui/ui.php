@@ -2,8 +2,9 @@
 
 namespace ui;
 
-require_once "./vendor/autoload.php";
-require_once "./database.php";
+require_once __DIR__ . "/../vendor/autoload.php";
+require_once __DIR__ . "/../data/database.php";
+require_once __DIR__ . "/../lemmatization/lemmatizer.php";
 
 class GUI {
     private $climate  = null;
@@ -28,18 +29,21 @@ class GUI {
     public function createHomeScreen() {
         $this->drawBanner();
         $this->drawHeader("Please choose your action below");
-        $this->showContent("1) Show all containers");
-        $this->showContent("2) Erase all data");
-        $this->showContent("3) Create new container");
-        $this->showContent("4) Create new entry");
-        $this->showContent("5) Remove container");
-        $this->showContent("6) Remove entry");
-        $this->showContent("7) Update Container");
-        $this->showContent("8) Update Entry");
+        $this->showContent("1 ) Show all containers");
+        $this->showContent("2 ) Erase all data");
+        $this->showContent("3 ) Create new container");
+        $this->showContent("4 ) Create new entry");
+        $this->showContent("5 ) Remove container");
+        $this->showContent("6 ) Remove entry");
+        $this->showContent("7 ) Update Container");
+        $this->showContent("8 ) Update Entry");
+        $this->showContent("9 ) Search");
+        $this->showContent("10) Backup/Restore");
+
 
         $this->climate->br();
         $this->promptInputCallable("Please choose a number :" , function($response) {
-            if(!in_array($response , [1,2,3,4,5,6,7,8])) return false;
+            if(!in_array($response , [1,2,3,4,5,6,7,8,9,10])) return false;
             switch ($response) {
                 case 1:
                     $this->createShowAllContainersScreen();
@@ -65,6 +69,12 @@ class GUI {
                 case 8:
                     $this->updateEntryScreen();
                     break; 
+                case 9:
+                    $this->searchScreen();
+                    break; 
+                case 10:
+                    $this->backupScreen();
+                    break;
             }
             return true;
         });
@@ -147,14 +157,16 @@ class GUI {
     public function createNewEntryScreen() {
         $this->drawBanner();
         $this->drawHeader("Creating new entry");
-        $id = $this->promptInput("*) Container ID :");
-        if($this->db->containerExists($id)) {
+        $id = Utils::cleanText($this->promptInput("*) Container ID :"));
+        if($id && $this->db->containerExists($id)) {
             $this->createNewEntrySubScreen($id);
         } else {
-            $this->climate->br();
-            $this->errorMessage(sprintf("Container with ID %s isn't found" , $id));
-            if($this->confirm("Try agian ?")) {
-                $this->createNewEntryScreen();
+            if($id) {
+                $this->climate->br();
+                $this->errorMessage(sprintf("Container with ID %s isn't found" , $id));
+                if($this->confirm("Try agian ?")) {
+                    $this->createNewEntryScreen();
+                }
             }
         }
         $this->createHomeScreen();
@@ -165,8 +177,8 @@ class GUI {
     public function removeContainerScreen() {
         $this->drawBanner();
         $this->drawHeader("Removing container");
-        $id = $this->promptInput("*) Container ID : ");
-        if($this->db->containerExists($id)) {
+        $id = Utils::cleanText($this->promptInput("*) Container ID : "));
+        if($id && $this->db->containerExists($id)) {
             $this->db->removeContainer($id);
             $this->climate->br();
             $this->succeedMessage("Container removed");
@@ -176,9 +188,11 @@ class GUI {
             }
         } else {
             $this->climate->br();
-            $this->errorMessage(sprintf("Container with ID %s isn't found" , $id));
-            if($this->confirm("Try agian ?")) {
-                $this->removeContainerScreen();
+            if($id) {
+                $this->errorMessage(sprintf("Container with ID %s isn't found" , $id));
+                if($this->confirm("Try agian ?")) {
+                    $this->removeContainerScreen();
+                }
             }
         }
         $this->createHomeScreen();
@@ -189,8 +203,8 @@ class GUI {
     public function removeEntryScreen() {
         $this->drawBanner();
         $this->drawHeader("Removing entry");
-        $id = $this->promptInput("*) Entry ID : ");
-        if($this->db->entryExists($id)) {
+        $id = Utils::cleanText($this->promptInput("*) Entry ID : "));
+        if($id && $this->db->entryExists($id)) {
             $this->db->removeEntry($id);
             $this->climate->br();
             $this->succeedMessage("Entry removed");
@@ -200,9 +214,11 @@ class GUI {
             }
         } else {
             $this->climate->br();
-            $this->errorMessage(sprintf("Entry with ID %s isn't found" , $id));
-            if($this->confirm("Try agian ?")) {
-                $this->removeEntryScreen();
+            if($id) {
+                $this->errorMessage(sprintf("Entry with ID %s isn't found" , $id));
+                if($this->confirm("Try agian ?")) {
+                    $this->removeEntryScreen();
+                }
             }
         }
         $this->createHomeScreen();
@@ -233,12 +249,12 @@ class GUI {
     public function updateContainerScreen() {
         $this->drawBanner();
         $this->drawHeader("Updating container");
-        $id = $this->promptInput("*) Container ID : ");
-        if($this->db->containerExists($id)) {
+        $id = Utils::cleanText($this->promptInput("*) Container ID : "));
+        if($id && $this->db->containerExists($id)) {
             $this->climate->br();
-            $this->contentDescTitle("*) Container old Description : " , $this->db->getContainer($id)["description"]);
+            $this->contentDescTitle("*) Container old Description : " , $this->db->getContainer($id)["Description"]);
             $desc = $this->promptInput("*) Container new Description : "); 
-            $this->db->updateContainer($id , Utils::textReplace($this->db->getContainer($id)["description"] , $desc));
+            $this->db->updateContainer($id , Utils::textReplace($this->db->getContainer($id)["Description"] , $desc));
             $this->climate->br();
             if($this->confirm("Update container entries ")) {
                 foreach($this->db->getContainerEntries(intval($id)) as $entry) {
@@ -251,10 +267,12 @@ class GUI {
                 }
             }
         } else {
-            $this->climate->br();
-            $this->errorMessage(sprintf("Container with ID %s isn't found" , $id));
-            if($this->confirm("Try agian ?")) {
-                $this->updateContainerScreen();
+            if($id) {
+                $this->climate->br();
+                $this->errorMessage(sprintf("Container with ID %s isn't found" , $id));
+                if($this->confirm("Try agian ?")) {
+                    $this->updateContainerScreen();
+                }
             }
         }
         $this->createHomeScreen();
@@ -266,19 +284,124 @@ class GUI {
     public function updateEntryScreen() {
         $this->drawBanner();
         $this->drawHeader("Updating entry");
-        $id = $this->promptInput("*) Entry ID : ");
-        if($this->db->entryExists($id)) {
+        $id = Utils::cleanText($this->promptInput("*) Entry ID : "));
+        if($id && $this->db->entryExists($id)) {
             $entry = $this->db->getEntry($id);
             $r = $this->updateEntrySubScreen($entry);
             $this->db->updateEntry($r["ID"] , $r["Key"] , $r["Value"] , $r["Description"]);
             $this->climate->br();
         } else {
-            $this->climate->br();
-            $this->errorMessage(sprintf("Entry with ID %s isn't found" , $id));
-            if($this->confirm("Try agian ?")) {
-                $this->updateEntryScreen();
+            if($id) {
+                $this->climate->br();
+                $this->errorMessage(sprintf("Entry with ID %s isn't found" , $id));
+                if($this->confirm("Try agian ?")) {
+                    $this->updateEntryScreen();
+                }
             }
         }
+        $this->createHomeScreen();
+    }
+
+    //---------------------------------------------------------------------------------------------
+
+    public function searchScreen() {
+        $this->drawBanner();
+        $this->drawHeader("Searching");
+        $keywords = Utils::cleanText($this->promptInput("*) Enter your search keywords : "));
+        if($keywords) {
+            $stored     = $this->db->getAllContainersText();
+            $keywords   = explode(" " , $keywords);
+            $sorted     = []; 
+            foreach($stored as $cont) {
+                $score = \lemmatization\Lemmatizer::getIntersection($keywords , $cont["Text"]);
+                if($score !== 0) $sorted[$cont["ID"]] = $score; 
+            } 
+            arsort($sorted);
+            $this->climate->br();
+            $this->innerTitle("*) Listing of matched results ");
+            if(count($sorted) === 0) {
+                $this->hintMessage("No matched result");
+                if($this->confirm("Try agian ?")) {
+                    $this->searchScreen();
+                } else {
+                    $this->createHomeScreen();
+                }    
+            } else {
+                foreach($sorted as $id => $count) {
+                    $container = $this->db->getContainer($id);
+                    $this->innerTitle(sprintf("Container ID#%s" , $container["ID"]));
+                    $this->columnTitle("Description");
+                    $this->showContent($container["Description"]);
+                    $this->climate->br();
+                    $this->showTable($this->db->getContainerEntries($container["ID"]));
+                }    
+            }
+            if($this->confirm("Search again ?")) {
+                $this->searchScreen();
+            } else {
+                $this->createHomeScreen();
+            }
+        } else {
+            $this->createHomeScreen();
+        }
+    }
+
+    //---------------------------------------------------------------------------------------------
+
+    public function backupScreen() {
+        $this->drawBanner();
+        $this->drawHeader("Backup/Restore");
+        $this->innerTitle("*) Please choose an action ");
+        $this->showContent("1) Create new backup");
+        $this->showContent("2) Restore backup");
+
+        $this->climate->br();
+        $this->promptInputCallable("*) Enter action number : " , function($response) {
+            if(!$response && $response != 0) return true;
+            if(!in_array($response , [1 , 2])) return false;
+            switch($response) {
+                case 1 :
+                    if($this->db->createBackup()) {
+                        $this->climate->br();
+                        $this->succeedMessage("Backup created successfully");
+                    } else {
+                        $this->climate->br();
+                        $this->errorMessage("Error occurred while creating backup");
+                    }
+                    break;
+                
+                case 2 :
+                    $backups = $this->db->getBackups();
+                    $this->climate->br();
+                    $this->innerTitle("*) Please choose one from the following backups ");
+                    foreach($backups as $key => $item) {
+                        ++$key;
+                        $this->showContent(date("$key ) Y:m:d H:i:s\t|" , explode("." , $item)[0]));
+                        $this->climate->border("-" , 25);
+                    }
+                    $this->climate->br();
+                    $this->promptInputCallable("*) Your choice : " , function($choice) use($backups) {
+                        if(!$choice && $choice != 0) {$this->climate->br();return true;}
+                        if(!($choice > 0 && $choice <= count($backups))) return false;
+                        --$choice;
+                        if($this->db->restoreBackup($backups[$choice])) {
+                            $this->climate->br();
+                            $this->succeedMessage("Backup restored successfully");
+                        } else {
+                            $this->climate->br();
+                            $this->errorMessage("Error occurred while restoring backup");
+                        }
+                        return true;
+                    });
+                    break;
+            }
+            if($this->confirm("Backup/Restore again ?")) {
+                $this->backupScreen();
+            } else {
+                $this->createHomeScreen();
+            }
+            return true;
+        });
         $this->createHomeScreen();
     }
 
@@ -308,7 +431,6 @@ class GUI {
 
     private function showContent($content) {
         $this->climate->out($content);
-        // $this->climate->br();
     }
 
     //---------------------------------------------------------------------------------------------
@@ -374,8 +496,14 @@ class GUI {
 
 class Utils {
     public static function textReplace($old , $new) {
-        $new = trim($new);
+        $new = Utils::cleanText($new);
         return ($new) ? $new : $old;  
+    }
+
+    //---------------------------------------------------------------------------------------------
+
+    public static function cleanText($text) {
+        return trim($text);
     }
 }
 

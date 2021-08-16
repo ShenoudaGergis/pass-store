@@ -5,15 +5,16 @@ use function \encryption\enc;
 use function \encryption\dec;
 
 
-require_once "./encryption.php";
+require_once __DIR__ . "/encryption.php";
 
 //-------------------------------------------------------------------------------------------------
 
 class Database {
-    private $dirpath = null;
-    private $dbpath  = null;
-    private $db      = null;
-    private $token   = null;
+    private $dirpath    = null;
+    private $dbpath     = null;
+    private $backuppath = null;
+    private $db         = null;
+    private $token      = null;
 
     //-----------------------------------------------------------------------------------
 
@@ -26,6 +27,7 @@ class Database {
     public function __construct() {
         $this->dirpath = $this->getHomeDir() . "/.passstore/";
         $this->dbpath  = $this->dirpath . "/data.db";
+        $this->backuppath = $this->dirpath . "backup/";
         $this->checkInstall();
         $this->db = new \SQLite3($this->dbpath);
         $this->createIniTables();
@@ -142,7 +144,8 @@ class Database {
 
     public function getContainer($id) {
         $r = $this->db->querySingle(sprintf('SELECT * FROM containers WHERE id=%d' , $id) , true);
-        $r["description"] = dec($r["description"] , $this->token);
+        $r["ID"] = $r["id"];
+        $r["Description"] = dec($r["description"] , $this->token);
         return $r;
     }
 
@@ -187,6 +190,51 @@ class Database {
         return [];
     }
 
+    //-----------------------------------------------------------------------------------
+
+    public function getAllContainersText() {
+        $data = [];
+        foreach($this->getAllContainers() as $cont) {
+            $row  = ["ID" => $cont["ID"]];
+            $text = explode(" " , $cont["Description"]);
+            foreach($cont["Entries"] as $entry) {
+                $text = array_merge($text ,
+                                    explode(" " , $entry["Key"]) , 
+                                    explode(" " , $entry["Value"]) , 
+                                    explode(" " , $entry["Description"]));
+            }
+            $row["Text"] = $text;
+            $data[] = $row;
+        }
+        return $data;
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    public function createBackup() {
+        if(!file_exists($this->backuppath)) {
+            if(!mkdir($this->backuppath)) return false;
+        }
+        if(!file_exists($this->dbpath)) return false; 
+        return copy($this->dbpath , $this->backuppath . time() . ".db");      
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    public function getBackups() {
+        if(!file_exists($this->backuppath)) return [];
+        return array_filter(scandir($this->backuppath  , SCANDIR_SORT_DESCENDING) , function($v) {
+            return !in_array($v , ["." , ".."]);
+        });
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    public function restoreBackup($fileName) {
+        if(!file_exists($this->backuppath)) return false;
+        return copy($this->backuppath . $fileName , $this->dbpath);
+    }
+
 }
 
-// print_r((new DataBase())->getEntry(2));
+// print_r((new DataBase())->getBackups());
