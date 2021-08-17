@@ -235,6 +235,16 @@ class Database {
         return copy($this->backuppath . $fileName , $this->dbpath);
     }
 
+    //-----------------------------------------------------------------------------------
+
+    public function eraseBackups() {
+        $r = true;
+        foreach($this->getBackups() as $item) {
+            $r = $r && unlink($this->backuppath . $item);
+        }
+        return $r;
+    }
+
 }
 
-// print_r((new DataBase())->getBackups());
+print_r((new DataBase())->eraseBackups());
