@@ -117,12 +117,11 @@ class GUI {
             $this->db->wipeData();
             $this->climate->br();
             $this->succeedMessage("All data has been deleted");
+            $this->promptInput("Press enter to return homepage");
+            $this->createHomeScreen();
         } else {
             $this->createHomeScreen();
         }
-        $this->promptInput("Press enter to return homepage");
-        $this->createHomeScreen();
-
     }
 
     //---------------------------------------------------------------------------------------------
@@ -135,7 +134,7 @@ class GUI {
         $value = $this->promptInput("*) Entry value :");
         $this->db->createNewEntry($cid , $key , $value , $desc);
         $this->climate->br();
-        while($this->confirm("Add another entry ?")) {
+        if($this->confirm("Add another entry ?")) {
             $this->climate->br();
             $this->createNewEntrySubScreen($cid);
         }
@@ -152,8 +151,10 @@ class GUI {
         $this->climate->br();
         if($this->confirm("Add container's entries now ?")) {
             $this->createNewEntrySubScreen($id);
+            $this->createHomeScreen();
+        } else {
+            $this->createHomeScreen();
         }
-        $this->createHomeScreen();
     }
 
     //---------------------------------------------------------------------------------------------
@@ -165,15 +166,19 @@ class GUI {
             $id = intval($out);
             if(is_numeric($out) && $this->db->containerExists($id)) {
                 $this->createNewEntrySubScreen($id);
+                $this->createHomeScreen();
             } else {
                 $this->climate->br();
                 $this->errorMessage(sprintf("Container with ID %s isn't found" , $out));
                 if($this->confirm("Try agian ?")) {
                     $this->createNewEntryScreen();
+                } else {
+                    $this->createHomeScreen();
                 }
             }
+        } else {
+            $this->createHomeScreen();
         }
-        $this->createHomeScreen();
     }
 
     //---------------------------------------------------------------------------------------------
@@ -187,19 +192,24 @@ class GUI {
                 $this->db->removeContainer($id);
                 $this->climate->br();
                 $this->succeedMessage("Container removed");
-                while($this->confirm("Remove another container ?")) {
+                if($this->confirm("Remove another container ?")) {
                     $this->climate->br();
                     $this->removeContainerScreen();
+                } else {
+                    $this->createHomeScreen();
                 }
             } else {
                 $this->climate->br();
                 $this->errorMessage(sprintf("Container with ID %s isn't found" , $out));
                 if($this->confirm("Try agian ?")) {
                     $this->removeContainerScreen();
-                }
+                } else {
+                    $this->createHomeScreen();
+                } 
             }
+        } else {
+            $this->createHomeScreen();
         }
-        $this->createHomeScreen();
     }
 
     //---------------------------------------------------------------------------------------------
@@ -213,20 +223,24 @@ class GUI {
                 $this->db->removeEntry($id);
                 $this->climate->br();
                 $this->succeedMessage("Entry removed");
-                while($this->confirm("Remove another Entry ?")) {
+                if($this->confirm("Remove another entry ?")) {
                     $this->climate->br();
                     $this->removeEntryScreen();
+                } else {
+                    $this->createHomeScreen();
                 }
             } else {
                 $this->climate->br();
                 $this->errorMessage(sprintf("Entry with ID %s isn't found" , $out));
                 if($this->confirm("Try agian ?")) {
                     $this->removeEntryScreen();
+                } else {
+                    $this->createHomeScreen();
                 }
             }
-        }        
-        $this->createHomeScreen();
-
+        } else {
+            $this->createHomeScreen();
+        }       
     }
 
     //---------------------------------------------------------------------------------------------
@@ -270,16 +284,21 @@ class GUI {
                         $this->climate->br();
                         if(!$this->confirm("Update next entry ?")) break;
                     }
+                } else {
+                    $this->createHomeScreen();
                 }
             } else {
                 $this->climate->br();
                 $this->errorMessage(sprintf("Container with ID %s isn't found" , $out));
                 if($this->confirm("Try agian ?")) {
                     $this->updateContainerScreen();
+                } else {
+                    $this->createHomeScreen();
                 }
             }
+        } else {
+            $this->createHomeScreen();
         }
-        $this->createHomeScreen();
     }
 
     //---------------------------------------------------------------------------------------------
@@ -296,16 +315,21 @@ class GUI {
                 $this->climate->br();
                 if($this->confirm("Update another entry ? ")) {
                     $this->updateEntryScreen();
+                } else {
+                    $this->createHomeScreen();
                 }
             } else {
                 $this->climate->br();
                 $this->errorMessage(sprintf("Entry with ID %s isn't found" , $out));
                 if($this->confirm("Try agian ?")) {
                     $this->updateEntryScreen();
+                } else {
+                    $this->createHomeScreen();
                 }
             }
+        } else {
+            $this->createHomeScreen();
         }
-        $this->createHomeScreen();
     }
 
     //-----------------------------------------------------------------------------------
@@ -325,12 +349,7 @@ class GUI {
             $this->climate->br();
             $this->innerTitle("*) Listing of matched results ");
             if(count($sorted) === 0) {
-                $this->hintMessage("No matched result");
-                if($this->confirm("Try agian ?")) {
-                    $this->searchScreen();
-                } else {
-                    $this->createHomeScreen();
-                }    
+                $this->hintMessage("No matched result");   
             } else {
                 foreach($sorted as $id => $count) {
                     $container = $this->db->getContainer($id);
@@ -338,7 +357,11 @@ class GUI {
                     $this->columnTitle("Description");
                     $this->showContent($container["Description"]);
                     $this->climate->br();
-                    $this->showTable($this->db->getContainerEntries($container["ID"]));
+                    $entries = $this->db->getContainerEntries($container["ID"]);
+                    if($entries) $this->showTable($entries);
+                    else {
+                        $this->hintMessage("The contaner has no entries");
+                    }
                 }    
             }
             if($this->confirm("Search again ?")) {
@@ -416,21 +439,20 @@ class GUI {
                     }
                     break;
             }
-            if($this->confirm("Backup/Restore again ?")) {
-                $this->backupScreen();
-            } else {
-                $this->createHomeScreen();
-            }
             return true;
         });
-        $this->createHomeScreen();
+        if($this->confirm("Backup/Restore again ?")) {
+            $this->backupScreen();
+        } else {
+            $this->createHomeScreen();
+        }
     }
 
     //---------------------------------------------------------------------------------------------
 
     public function exitScreen() {
         $this->climate->clear();
-        $this->climate->animation("thankyou")->speed(700)->scroll('right');
+        $this->climate->animation("thankyou")->speed(700)->scroll("left");
         $this->climate->clear();
     }
 

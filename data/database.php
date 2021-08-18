@@ -184,8 +184,8 @@ class Database {
 
     public function getContainerEntries($id) {
         $allContainers = $this->getAllContainers();
-        foreach($allContainers as $key => $container) {
-            if($container["ID"] === $id) return $container["Entries"];
+        foreach($allContainers as $container) {
+            if($container["ID"] == $id) return $container["Entries"];
         }
         return [];
     }
