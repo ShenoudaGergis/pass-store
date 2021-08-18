@@ -416,7 +416,7 @@ class GUI {
                     $this->climate->br();
                     $this->promptInputCallable("*) Your choice : " , function($choice) use($backups) {
                         if(!Utils::isTextGiven($choice)) {$this->climate->br();return true;}
-                        if(!Utils::checkRange(range(1,count($backups)-1) , $choice)) return false;
+                        if(!Utils::checkRange(range(1,count($backups)) , $choice)) return false;
                         --$choice;
                         if($this->db->restoreBackup($backups[$choice])) {
                             $this->climate->br();
